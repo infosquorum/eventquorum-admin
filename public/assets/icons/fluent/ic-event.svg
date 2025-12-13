@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+  <defs>
+    <!-- Gradient principal du calendrier -->
+    <linearGradient id="calendarBody" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F3E8FF" /> <!-- Violet très clair -->
+      <stop offset="100%" stop-color="#E9D5FF" /> <!-- Violet clair -->
+    </linearGradient>
+    
+    <!-- Gradient pour l'en-tête du calendrier -->
+    <linearGradient id="calendarHeader" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#9333EA" /> <!-- Violet foncé -->
+      <stop offset="100%" stop-color="#7E22CE" /> <!-- Violet plus foncé -->
+    </linearGradient>
+    
+    <!-- Gradient pour le cercle de statut -->
+    <linearGradient id="statusCircle" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A855F7" /> <!-- Violet vif -->
+      <stop offset="100%" stop-color="#8B5CF6" /> <!-- Violet intense -->
+    </linearGradient>
+
+    <!-- Filtre pour l'ombre portée -->
+    <filter id="shadow" x="-1" y="-1" width="22" height="22">
+      <feDropShadow dx="0" dy="1" stdDeviation="0.5" flood-opacity="0.2" />
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <!-- Corps du calendrier -->
+    <path d="M3 6h14v8.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 3 14.5V6z"
+          fill="url(#calendarBody)" />
+    
+    <!-- En-tête du calendrier -->
+    <path d="M17 5.5A2.5 2.5 0 0 0 14.5 3h-9A2.5 2.5 0 0 0 3 5.5V7h14V5.5z"
+          fill="url(#calendarHeader)" />
+    
+    <!-- Cercle de statut -->
+    <circle cx="14.5" cy="14.5" r="4.5" 
+            fill="url(#statusCircle)" />
+    
+    <!-- Symbole de validation -->
+    <path d="M16.854 12.646a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1-1a.5.5 0 0 1 .708-.708l.646.647l2.646-2.647a.5.5 0 0 1 .708 0"
+          fill="white" />
+  </g>
+</svg>

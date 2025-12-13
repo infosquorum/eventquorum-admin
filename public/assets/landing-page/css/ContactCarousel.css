@@ -1,0 +1,297 @@
+/* ===== CONTACT CAROUSEL STYLES ===== */
+
+/* Conteneur principal du carrousel */
+.contact-carousel-container {
+    position: relative;
+    height: 450px;
+    width: 100%;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    background: #f8f9fa;
+}
+
+/* Conteneur des slides */
+.carousel-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+/* Chaque slide individuelle */
+.carousel-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transform: scale(1.05);
+    transition: all 1000ms ease-in-out;
+}
+
+/* Slide active */
+.carousel-slide.active {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Image du slide */
+.carousel-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 1000ms ease-in-out;
+}
+
+/* Overlay gradient */
+.carousel-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg,
+            transparent 0%,
+            transparent 50%,
+            rgba(0, 0, 0, 0.5) 100%);
+    pointer-events: none;
+}
+
+/* Contenu texte en bas de slide */
+.carousel-content {
+    position: absolute;
+    bottom: 24px;
+    left: 24px;
+    color: white;
+    z-index: 2;
+}
+
+.carousel-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.carousel-description {
+    font-size: 0.875rem;
+    opacity: 0.9;
+    line-height: 1.4;
+}
+
+/* Indicateurs de slides */
+.carousel-indicators {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    display: flex;
+    gap: 8px;
+    z-index: 3;
+}
+
+.carousel-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.5);
+    transition: all 300ms ease;
+    cursor: pointer;
+}
+
+.carousel-indicator.active {
+    background-color: white;
+    width: 24px;
+    border-radius: 4px;
+}
+
+/* Effet de brillance */
+.carousel-shine {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.1),
+            transparent);
+    transform: skewX(-12deg);
+    transition: transform 1000ms ease-in-out;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Animation de brillance */
+.carousel-shine.animate {
+    animation: shine 3000ms infinite;
+}
+
+@keyframes shine {
+    0% {
+        transform: translateX(-100%) skewX(-12deg);
+    }
+
+    20% {
+        transform: translateX(100%) skewX(-12deg);
+    }
+
+    100% {
+        transform: translateX(100%) skewX(-12deg);
+    }
+}
+
+/* Animation d'entrée du carrousel */
+.carousel-enter {
+    opacity: 0;
+    transform: translateX(48px);
+    transition: all 2000ms ease-out;
+}
+
+.carousel-enter.visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+
+/* Tablets */
+@media (max-width: 768px) {
+    .contact-carousel-container {
+        height: 350px;
+        border-radius: 12px;
+    }
+
+    .carousel-content {
+        bottom: 16px;
+        left: 16px;
+    }
+
+    .carousel-title {
+        font-size: 1rem;
+    }
+
+    .carousel-description {
+        font-size: 0.8125rem;
+    }
+
+    .carousel-indicators {
+        bottom: 12px;
+        right: 12px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 576px) {
+    .contact-carousel-container {
+        height: 300px;
+        border-radius: 8px;
+    }
+
+    .carousel-content {
+        bottom: 12px;
+        left: 12px;
+    }
+
+    .carousel-title {
+        font-size: 0.875rem;
+        margin-bottom: 4px;
+    }
+
+    .carousel-description {
+        font-size: 0.75rem;
+    }
+
+    .carousel-indicators {
+        bottom: 8px;
+        right: 8px;
+        gap: 6px;
+    }
+
+    .carousel-indicator {
+        width: 6px;
+        height: 6px;
+    }
+
+    .carousel-indicator.active {
+        width: 18px;
+    }
+}
+
+/* ===== INTÉGRATION AVEC EVENTIFY ===== */
+
+/* Assurer la compatibilité avec les classes Eventify existantes */
+.contact-inner-section .contact-carousel-container {
+    margin-bottom: 0;
+}
+
+/* Ajustements pour le layout de contact */
+.contact-carousel-wrapper {
+    position: relative;
+}
+
+/* Animation image-anime compatible */
+.contact-carousel-container.image-anime {
+    animation: fadeInRight 1s ease-out;
+}
+
+@keyframes fadeInRight {
+    0% {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Styles pour préchargement des images */
+.carousel-slide img.loading {
+    opacity: 0.7;
+    filter: blur(2px);
+}
+
+.carousel-slide img.loaded {
+    opacity: 1;
+    filter: none;
+    transition: all 500ms ease;
+}
+
+/* Effet hover sur les indicateurs */
+.carousel-indicator:hover {
+    background-color: rgba(255, 255, 255, 0.8);
+    transform: scale(1.1);
+}
+
+/* Pause du carrousel au hover */
+.contact-carousel-container:hover .carousel-shine {
+    animation-play-state: paused;
+}
+
+/* Ajustement pour les animations AOS existantes */
+[data-aos="zoom-in"] .contact-carousel-container {
+    transform: scale(0.9);
+    transition: transform 1000ms ease;
+}
+
+[data-aos="zoom-in"].aos-animate .contact-carousel-container {
+    transform: scale(1);
+}
+
+/* Couleurs personnalisables avec les variables EventQuorum */
+.carousel-overlay.eq-theme {
+    background: linear-gradient(180deg,
+            transparent 0%,
+            transparent 50%,
+            var(--ztc-bg-bg-2, rgba(0, 0, 0, 0.5)) 100%);
+}
+
+.carousel-indicator.eq-theme {
+    background-color: var(--ztc-bg-bg-1, rgba(255, 255, 255, 0.5));
+}
+
+.carousel-indicator.active.eq-theme {
+    background-color: var(--ztc-text-text-1, white);
+}

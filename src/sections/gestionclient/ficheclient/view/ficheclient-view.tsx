@@ -29,7 +29,7 @@ export function FicheClientView({ client: currentClient }: Props) {
     <DashboardContent maxWidth='xl'>
       <FicheClientToolbar
             backHref={paths.admin.GESTION_CLIENT.root}
-            editHref={paths.admin.GESTION_CLIENT.ficheclient(`${currentClient?.id}`)}
+            editHref={paths.admin.GESTION_CLIENT.edit(`${currentClient?.id}`)}
       />
       {/* <UserNewEditForm currentUser={currentClient} /> */}
       <FicheClientContentV2 client={currentClient} />

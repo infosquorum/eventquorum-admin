@@ -30,79 +30,92 @@ import TypeEditDialog from './type-edit-dialog';
 
 // ----------------------------------------------------------------------
 
+// type Props = {
+//     row: IEventType;
+//     selected: boolean;
+//     editHref: string;
+//     onSelectRow: () => void;
+//     onDeleteRow: () => void;
+// };
+
 type Props = {
     row: IEventType;
-    selected: boolean;
-    editHref: string;
-    onSelectRow: () => void;
-    onDeleteRow: () => void;
 };
+export function TypeTableRow({ row }: Props) {
+    // const menuActions = usePopover();
+    // const confirmDialog = useBoolean();
+    // const quickEditForm = useBoolean();
 
-export function TypeTableRow({ row, selected, editHref, onSelectRow, onDeleteRow }: Props) {
-    const menuActions = usePopover();
-    const confirmDialog = useBoolean();
-    const quickEditForm = useBoolean();
 
+//     const renderQuickEditForm = () => (
+//     <TypeEditDialog
+//       data={row}
+//       open={quickEditForm.value}
+//       onSave={quickEditForm.onFalse}
+//       onClose={quickEditForm.onFalse}
+//       />
+//   );
 
-    const renderQuickEditForm = () => (
-    <TypeEditDialog
-      data={row}
-      open={quickEditForm.value}
-      onSave={quickEditForm.onFalse}
-      onClose={quickEditForm.onFalse}
-      />
-  );
+    // const renderMenuActions = () => (
+    //     <CustomPopover
+    //         open={menuActions.open}
+    //         anchorEl={menuActions.anchorEl}
+    //         onClose={menuActions.onClose}
+    //         slotProps={{ arrow: { placement: 'right-top' } }}
+    //     >
+    //         <MenuList>
+    //             <li>
+    //                 <MenuItem component={RouterLink} href={editHref} onClick={() => menuActions.onClose()}>
+    //                     <Iconify icon="solar:pen-bold" />
+    //                     Modifier
+    //                 </MenuItem>
+    //             </li>
 
-    const renderMenuActions = () => (
-        <CustomPopover
-            open={menuActions.open}
-            anchorEl={menuActions.anchorEl}
-            onClose={menuActions.onClose}
-            slotProps={{ arrow: { placement: 'right-top' } }}
-        >
-            <MenuList>
-                <li>
-                    <MenuItem component={RouterLink} href={editHref} onClick={() => menuActions.onClose()}>
-                        <Iconify icon="solar:pen-bold" />
-                        Modifier
-                    </MenuItem>
-                </li>
+    //             <MenuItem
+    //                 onClick={() => {
+    //                     confirmDialog.onTrue();
+    //                     menuActions.onClose();
+    //                 }}
+    //                 sx={{ color: 'error.main' }}
+    //             >
+    //                 <Iconify icon="solar:trash-bin-trash-bold" />
+    //                 Supprimer
+    //             </MenuItem>
+    //         </MenuList>
+    //     </CustomPopover>
+    // );
 
-                <MenuItem
-                    onClick={() => {
-                        confirmDialog.onTrue();
-                        menuActions.onClose();
-                    }}
-                    sx={{ color: 'error.main' }}
-                >
-                    <Iconify icon="solar:trash-bin-trash-bold" />
-                    Supprimer
-                </MenuItem>
-            </MenuList>
-        </CustomPopover>
-    );
-
-    const renderConfirmDialog = () => (
-        <ConfirmDialog
-            open={confirmDialog.value}
-            onClose={confirmDialog.onFalse}
-            title="Supprimer"
-            content="Êtes vous sûr de vouloir supprimer?"
-            action={
-                <Button variant="contained" color="error" onClick={onDeleteRow}>
-                    Supprimer
-                </Button>
-            }
-        />
-    );
+    // const renderConfirmDialog = () => (
+    //     <ConfirmDialog
+    //         open={confirmDialog.value}
+    //         onClose={confirmDialog.onFalse}
+    //         title="Supprimer"
+    //         content="Êtes vous sûr de vouloir supprimer?"
+    //         action={
+    //             <Button variant="contained" color="error" onClick={onDeleteRow}>
+    //                 Supprimer
+    //             </Button>
+    //         }
+    //     />
+    // );
 
     return (
         <>
-            <TableRow hover selected={selected} aria-checked={selected} tabIndex={-1}>
-                <TableCell padding="checkbox">
+            <TableRow hover tabIndex={-1}>
+                {/* <TableCell padding="checkbox">
                     <Checkbox
                         checked={selected}
                         onClick={onSelectRow}
+                        inputProps={{
+                            id: `${row.id}-checkbox`,
+                            'aria-label': `${row.id} checkbox`,
+                        }}
+                    />
+                </TableCell> */}
+                <TableCell padding="checkbox">
+                    <Checkbox
+                        disabled
+                        checked={false}
                         inputProps={{
                             id: `${row.id}-checkbox`,
                             'aria-label': `${row.id} checkbox`,
@@ -112,30 +125,36 @@ export function TypeTableRow({ row, selected, editHref, onSelectRow, onDeleteRow
 
                 <TableCell>
                     <Stack sx={{ typography: 'body2', flex: '1 1 auto', alignItems: 'flex-start' }}>
-                            {row.name}
+                        {row.label}
                     </Stack>
                 </TableCell>
 
                 
                 <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Tooltip title="Modifier" placement="top" arrow>
+                        {/* <Tooltip title="Modification non disponible" placement="top" arrow>
                             <IconButton
-                                color={quickEditForm.value ? 'inherit' : 'default'}
-                                onClick={quickEditForm.onTrue}
+                                disabled
+                                color="default"
                             >
                                 <Iconify icon="solar:pen-bold" />
                             </IconButton>
                         </Tooltip>
-                        <Tooltip title="Modifier" placement="top" arrow>
+                        <Tooltip title="Suppression non disponible" placement="top" arrow>
                             <IconButton
-                                color={'error'}
-                                onClick={() => {
-                                    confirmDialog.onTrue();
-                                    menuActions.onClose();
-                                }}
-                                sx={{ color: 'error.main' }}
+                                disabled
+                                color="default"
                             >
+                                <Iconify icon="solar:trash-bin-trash-bold" />
+                            </IconButton>
+                        </Tooltip> */}
+                        <Tooltip title="Modification non disponible" placement="top" arrow>
+                            <IconButton disabled color="default">
+                                <Iconify icon="solar:pen-bold" />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Suppression non disponible" placement="top" arrow>
+                            <IconButton disabled color="default">
                                 <Iconify icon="solar:trash-bin-trash-bold" />
                             </IconButton>
                         </Tooltip>
@@ -150,9 +169,9 @@ export function TypeTableRow({ row, selected, editHref, onSelectRow, onDeleteRow
                 </TableCell>
             </TableRow>
 
-            {renderQuickEditForm()}
+            {/* {renderQuickEditForm()}
             {renderMenuActions()}
-            {renderConfirmDialog()}
+            {renderConfirmDialog()} */}
         </>
     );
 }

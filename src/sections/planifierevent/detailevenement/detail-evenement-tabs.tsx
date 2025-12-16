@@ -1,21 +1,29 @@
+//src/sections/planifierevent/detailevenement/detail-evenement-tabs.tsx
+
 import React, { useState } from 'react';
-import { Box, Typography, Paper, Avatar, IconButton, Card, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Stack, Button, FormControl, InputLabel, MenuItem, Select, TextField, Checkbox, InputAdornment } from '@mui/material';
+
 import Grid from '@mui/material/Grid2';
-import { Iconify } from 'src/components/iconify';
-import { Label } from 'src/components/label';
+import { Box, Typography, Paper, Avatar, IconButton, Card, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Stack, Button, FormControl, InputLabel, MenuItem, Select, TextField, Checkbox, InputAdornment } from '@mui/material';
+
 import { fDateTime } from 'src/utils/format-time';
 import { fDate, fTime } from 'src/utils/format-time';
-import { ITourItem } from 'src/types/tour';
-import { Lightbox, useLightBox } from 'src/components/lightbox';
-import { Image } from 'src/components/image';
+
 import { _mock } from 'src/_mock';
-import { ConfirmDialog } from 'src/components/custom-dialog';
-import { CustomPopover } from 'src/components/custom-popover';
+
+import { Label } from 'src/components/label';
+import { Image } from 'src/components/image';
+import { Iconify } from 'src/components/iconify';
+import { TableNoData } from 'src/components/table';
 import { Scrollbar } from 'src/components/scrollbar';
 import { Field } from 'src/components/hook-form/fields';
-import { TableNoData } from 'src/components/table';
+import { ConfirmDialog } from 'src/components/custom-dialog';
+import { CustomPopover } from 'src/components/custom-popover';
+import { Lightbox, useLightBox } from 'src/components/lightbox';
+
 import { FicheClientSolde } from 'src/sections/gestionclient/ficheclient/ficheclient-solde-widget';
 import { PAYMENT_DATA, PaymentMethodsList } from 'src/sections/overview/admin/admin-sales-overview';
+
+import { ITourItem } from 'src/types/tour';
 
 // Agenda Tab Component
 type StatusType = 'terminé' | 'en cours' | 'non demarré';

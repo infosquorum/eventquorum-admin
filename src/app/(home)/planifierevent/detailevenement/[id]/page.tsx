@@ -116,7 +116,7 @@ function mapEventToView(
     coverUrl: '',
     startDate: '',
     endDate: '',
-    createdAt: undefined,
+    createdAt: new Date(),
     participants: 0,
     likes: 0,
     revenue: 0,

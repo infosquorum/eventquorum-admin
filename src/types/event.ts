@@ -1,3 +1,5 @@
+// src/types/event.ts
+
 import type { IDateValue, IDatePickerControl } from './common';
 
 export type IEventOrganizer = {

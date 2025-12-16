@@ -1,103 +1,204 @@
+import type { Organizer, OrganizerDetails } from 'src/lib/organizers/types';
+
 import { z as zod } from 'zod';
+import { useForm } from 'react-hook-form';
 import { useBoolean } from 'minimal-shared/hooks';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, Controller } from 'react-hook-form';
-import { isValidPhoneNumber } from 'react-phone-number-input/input';
+import { isValidPhoneNumber, parsePhoneNumber } from 'react-phone-number-input/input';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Grid from '@mui/material/Grid2';
 import Stack from '@mui/material/Stack';
-import Button from '@mui/material/Button';
-import Switch from '@mui/material/Switch';
-import { InputAdornment } from '@mui/material';
-import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
 import LoadingButton from '@mui/lab/LoadingButton';
-import FormControlLabel from '@mui/material/FormControlLabel';
 
 import { paths } from 'src/routes/paths';
 import { useRouter } from 'src/routes/hooks';
 
-import { fData } from 'src/utils/format-number';
+// ✅ IMPORTS DES ACTIONS ET TYPES
+import { createOrganizer, updateOrganizer } from 'src/lib/organizers/actions';
 
-import { Label } from 'src/components/label';
 import { toast } from 'src/components/snackbar';
-import { Iconify } from 'src/components/iconify';
 import { Form, Field, schemaHelper } from 'src/components/hook-form';
 
-import { IOrganizerItem } from 'src/types/organizer';
+// ----------------------------------------------------------------------
 
-export const NewUserSchema = zod.object({
-    avatarUrl: schemaHelper.file({ message: 'La photo de profil est requise!' }),
+/**
+ * Schéma de validation Zod
+ */
+export const OrganizerFormSchema = zod.object({
     name: zod.string().min(1, { message: 'Le nom est requis!' }),
     surname: zod.string().min(1, { message: 'Le prénom est requis!' }),
-    password: zod.string().min(1, { message: 'Le mot de passe est requis!' }),
     email: zod
         .string()
         .min(1, { message: "L'email est requis!" })
         .email({ message: "L'email doit être une adresse valide!" }),
-    phoneNumber: schemaHelper.phoneNumber({ isValid: isValidPhoneNumber }),
+    phoneNumber: zod
+        .string()
+        .min(1, { message: 'Le numéro de téléphone est requis!' })
+        .refine(
+            (value) => {
+                if (!value) return false;
+                try {
+                    return isValidPhoneNumber(value);
+                } catch {
+                    return false;
+                }
+            },
+            { message: 'Le numéro de téléphone n\'est pas valide!' }
+        ),
     address: zod.string().min(1, { message: "L'adresse est requise!" }),
-    status: zod.string(),
-    isVerified: zod.boolean(),
 });
 
-export type NewUserSchemaType = zod.infer<typeof NewUserSchema>;
+export type OrganizerFormSchemaType = zod.infer<typeof OrganizerFormSchema>;
+
+// ----------------------------------------------------------------------
 
 type Props = {
-    currentUser?: IOrganizerItem;
+    currentUser?: Organizer | OrganizerDetails;
 };
 
+/**
+ * Formulaire de création/édition d'organisateur
+ */
 export function OrganizerNewEditForm({ currentUser }: Props) {
     const router = useRouter();
-    const showPassword = useBoolean();
 
-    const defaultValues: NewUserSchemaType = {
-        status: '',
-        avatarUrl: null,
-        isVerified: true,
-        name: '',
-        surname: '',
-        password: '',
-        email: '',
-        phoneNumber: '',
-        address: '',
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 📝 CONFIGURATION DU FORMULAIRE
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    const defaultValues: OrganizerFormSchemaType = {
+        name: currentUser?.firstName || '',
+        surname: currentUser?.lastName || '',
+        email: currentUser?.email || '',
+        phoneNumber: currentUser?.phoneNumber || '',
+        address: 'address' in (currentUser || {}) ? (currentUser as OrganizerDetails).address : '',
     };
 
-    const methods = useForm<NewUserSchemaType>({
+    const methods = useForm<OrganizerFormSchemaType>({
         mode: 'onSubmit',
-        resolver: zodResolver(NewUserSchema),
+        resolver: zodResolver(OrganizerFormSchema),
         defaultValues,
-        values: currentUser,
     });
 
     const {
         reset,
-        watch,
-        control,
         handleSubmit,
         formState: { isSubmitting },
     } = methods;
 
-    const values = watch();
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 📤 SOUMISSION DU FORMULAIRE
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     const onSubmit = handleSubmit(async (data) => {
         try {
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            reset();
-            toast.success(currentUser ? 'Mise à jour réussie!' : 'Création réussie!');
-            router.push(paths.dashboard.user.list);
-            console.info('DATA', data);
+            console.log('📤 Soumission du formulaire:', data);
+
+            // Validation du téléphone
+            if (!isValidPhoneNumber(data.phoneNumber)) {
+                toast.error('Le numéro de téléphone n\'est pas valide');
+                return;
+            }
+
+            // ✅ EXTRACTION CORRECTE POUR LE BACKEND
+            const parsedPhone = parsePhoneNumber(data.phoneNumber);
+            
+            if (!parsedPhone) {
+                toast.error('Impossible de parser le numéro de téléphone');
+                return;
+            }
+
+            const phoneInformation = {
+                number: parsedPhone.nationalNumber,  // Ex: "0749668962"
+                region: parsedPhone.country,          // Ex: "CI"
+            };
+
+            console.log('📞 Téléphone extrait:', {
+                original: data.phoneNumber,
+                ...phoneInformation
+            });
+
+            if (currentUser) {
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                // ✏️ MODE ÉDITION
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+                console.log('🔄 Mise à jour de l\'organisateur:', currentUser.id);
+
+                const result = await updateOrganizer(currentUser.id, {
+                    firstName: data.name,
+                    lastName: data.surname,
+                    email: data.email,
+                    address: data.address,
+                    phoneInformation,
+                });
+
+                // Vérifier si c'est un succès
+                if (result && 'success' in result && !result.success) {
+                    toast.error(result.error || 'Erreur lors de la mise à jour');
+                    return;
+                }
+
+                // ✅ SUCCÈS - Afficher message et rediriger
+                toast.success('Organisateur mis à jour avec succès!');
+                
+                // Attendre un peu pour que l'utilisateur voie le toast
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Rediriger vers la liste
+                router.push(paths.admin.PLANIFIER_UN_EVENEMENT.root);
+
+            } else {
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                // ➕ MODE CRÉATION
+                // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+                console.log('➕ Création d\'un nouvel organisateur');
+
+                const result = await createOrganizer({
+                    firstName: data.name,
+                    lastName: data.surname,
+                    email: data.email,
+                    address: data.address,
+                    phoneInformation,
+                });
+
+                // Vérifier si c'est un succès
+                if (result && 'success' in result && !result.success) {
+                    toast.error(result.error || 'Erreur lors de la création');
+                    return;
+                }
+
+                // ✅ SUCCÈS - Afficher message et réinitialiser le formulaire
+                toast.success('Organisateur créé avec succès!');
+                
+                console.log('🔄 Réinitialisation du formulaire');
+                
+                // Réinitialiser le formulaire pour permettre une nouvelle création
+                reset({
+                    name: '',
+                    surname: '',
+                    email: '',
+                    phoneNumber: '',
+                    address: '',
+                });
+            }
+
         } catch (error) {
-            console.error(error);
+            console.error('❌ Erreur lors de la soumission:', error);
+            toast.error('Une erreur est survenue');
         }
     });
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🎨 RENDU DU FORMULAIRE
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     return (
         <Form methods={methods} onSubmit={onSubmit}>
             <Grid container spacing={3}>
-
                 <Grid size={{ xs: 12, md: 8 }}>
                     <Card sx={{ p: 3 }}>
                         <Box
@@ -108,40 +209,62 @@ export function OrganizerNewEditForm({ currentUser }: Props) {
                                 gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(2, 1fr)' },
                             }}
                         >
-                            <Field.Text name="name" label="Nom" />
-                            <Field.Text name="surname" label="Prénom" />
-                            <Field.Text name="email" label="Adresse email"  />
-                            <Field.Text
-                                name="password"
-                                label="Mot de passe"
-                                type={showPassword.value ? 'text' : 'password'}
-                                slotProps={{
-                                    input: {
-                                        endAdornment: (
-                                            <InputAdornment position="end">
-                                                <IconButton onClick={showPassword.onToggle} edge="end">
-                                                    <Iconify
-                                                        icon={showPassword.value ? 'solar:eye-bold' : 'solar:eye-closed-bold'}
-                                                    />
-                                                </IconButton>
-                                            </InputAdornment>
-                                        ),
-                                    },
-                                }}
+                            {/* NOM */}
+                            <Field.Text 
+                                name="name" 
+                                label="Nom"
+                                placeholder="Entrez le nom"
                             />
+
+                            {/* PRÉNOM */}
+                            <Field.Text 
+                                name="surname" 
+                                label="Prénom"
+                                placeholder="Entrez le prénom"
+                            />
+
+                            {/* EMAIL */}
+                            <Field.Text 
+                                name="email" 
+                                label="Adresse email"
+                                placeholder="exemple@email.com"
+                            />
+
+                            {/* TÉLÉPHONE */}
                             <Field.Phone
                                 name="phoneNumber"
                                 label="Numéro de téléphone mobile"
                                 country={!currentUser ? 'CI' : undefined}
                             />
-                            <Field.Text name="address" label="Lieu d'habitation"  />
-                            <Field.Text name="status" label="Status" value="Actif" disabled />
 
+                            {/* ADRESSE - Sur toute la largeur */}
+                            <Box sx={{ gridColumn: { sm: 'span 2' } }}>
+                                <Field.Text 
+                                    name="address" 
+                                    label="Lieu d'habitation"
+                                    placeholder="Entrez l'adresse complète"
+                                />
+                            </Box>
 
+                            {/* STATUT - Affiché uniquement en mode édition */}
+                            {currentUser && (
+                                <Field.Text 
+                                    name="status" 
+                                    label="Statut" 
+                                    value="Actif" 
+                                    disabled 
+                                />
+                            )}
                         </Box>
 
+                        {/* BOUTON DE SOUMISSION */}
                         <Stack sx={{ mt: 3, alignItems: 'flex-end' }}>
-                            <LoadingButton type="submit" variant="contained" loading={isSubmitting}>
+                            <LoadingButton 
+                                type="submit" 
+                                variant="contained" 
+                                loading={isSubmitting}
+                                size="large"
+                            >
                                 {!currentUser ? 'Créer organisateur' : 'Enregistrer les modifications'}
                             </LoadingButton>
                         </Stack>

@@ -22,10 +22,6 @@ import { Iconify } from 'src/components/iconify';
 import { ConfirmDialog } from 'src/components/custom-dialog';
 import { CustomPopover } from 'src/components/custom-popover';
 
-import { UserQuickEditForm } from '../../user/user-quick-edit-form';
-
-// import { UserQuickEditForm } from './user-quick-edit-form';
-
 // ----------------------------------------------------------------------
 
 type Props = {
@@ -36,20 +32,40 @@ type Props = {
     detailEventHref?: string;
     onSelectRow: () => void;
     onDeleteRow: () => void;
+    // ❌ RETIRÉ : onToggleStatus (changement de statut se fait ailleurs)
 };
 
-export function EventTableRow({ row, selected, editHref, ficheClientHref, detailEventHref, onSelectRow, onDeleteRow }: Props) {
+/**
+ * Helper pour obtenir la couleur du statut
+ * 
+ * Statuts possibles (de eventService.getStatusLabel()):
+ * - "Non démarré"
+ * - "En cours" 
+ * - "Terminé"
+ * - "Suspendu"
+ */
+function getStatusColor(status: string): 'default' | 'primary' | 'success' | 'warning' | 'error' {
+    const normalizedStatus = status.toLowerCase();
+    
+    if (normalizedStatus === 'terminé') return 'success';
+    if (normalizedStatus === 'en cours') return 'primary';
+    if (normalizedStatus === 'non démarré') return 'default';
+    if (normalizedStatus === 'suspendu') return 'warning';
+    
+    return 'default';
+}
+
+export function EventTableRow({ 
+    row, 
+    selected, 
+    editHref, 
+    ficheClientHref, 
+    detailEventHref, 
+    onSelectRow, 
+    onDeleteRow
+}: Props) {
     const menuActions = usePopover();
     const confirmDialog = useBoolean();
-    const quickEditForm = useBoolean();
-
-    const renderQuickEditForm = () => (
-        <UserQuickEditForm
-            // currentUser={row}
-            open={quickEditForm.value}
-            onClose={quickEditForm.onFalse}
-        />
-    );
 
     const renderMenuActions = () => (
         <CustomPopover
@@ -65,6 +81,9 @@ export function EventTableRow({ row, selected, editHref, ficheClientHref, detail
                         Modifier
                     </MenuItem>
                 </li>
+
+                {/* ❌ RETIRÉ : Option Suspendre/Réactiver */}
+                {/* Le changement de statut d'un événement se fait ailleurs */}
 
                 <MenuItem
                     onClick={() => {
@@ -85,7 +104,7 @@ export function EventTableRow({ row, selected, editHref, ficheClientHref, detail
             open={confirmDialog.value}
             onClose={confirmDialog.onFalse}
             title="Supprimer"
-            content="Êtes vous sûr de vouloir supprimer?"
+            content="Êtes vous sûr de vouloir supprimer cet événement?"
             action={
                 <Button variant="contained" color="error" onClick={onDeleteRow}>
                     Supprimer
@@ -108,16 +127,18 @@ export function EventTableRow({ row, selected, editHref, ficheClientHref, detail
                     />
                 </TableCell>
 
+                {/* Logo */}
                 <TableCell>
                     <Box sx={{ gap: 2, display: 'flex', alignItems: 'center' }}>
                         <Avatar alt={row.logo} src={row.logo} />
                     </Box>
                 </TableCell>
 
+                {/* Matricule */}
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>
                     <Link
                         component={RouterLink}
-                        href={detailEventHref ? detailEventHref : ''}
+                        href={detailEventHref || '#'}
                         color="inherit"
                         sx={{ cursor: 'pointer' }}
                     >
@@ -125,10 +146,11 @@ export function EventTableRow({ row, selected, editHref, ficheClientHref, detail
                     </Link>
                 </TableCell>
 
+                {/* Nom de l'événement */}
                 <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'bold' }}>
                     <Link
                         component={RouterLink}
-                        href={detailEventHref ? detailEventHref : ''}
+                        href={detailEventHref || '#'}
                         color="inherit"
                         sx={{ cursor: 'pointer' }}
                     >
@@ -136,48 +158,46 @@ export function EventTableRow({ row, selected, editHref, ficheClientHref, detail
                     </Link>
                 </TableCell>
 
+                {/* ✅ Type d'événement (maintenant affiche correctement le label) */}
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.type}</TableCell>
+
+                {/* Période */}
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.date}</TableCell>
+
+                {/* Nom client */}
                 <TableCell>
                     <Box sx={{ gap: 2, display: 'flex', alignItems: 'center' }}>
-
                         <Stack sx={{ typography: 'body2', flex: '1 1 auto', alignItems: 'flex-start' }}>
                             <Link
                                 component={RouterLink}
-                                href={ficheClientHref ? ficheClientHref : ''}
+                                href={ficheClientHref || '#'}
                                 color="inherit"
                                 sx={{ cursor: 'pointer' }}
                             >
                                 {row.nomclient}
                             </Link>
-                            {/* <Box component="span" sx={{ color: 'text.disabled' }}>
-                                {row.name}
-                            </Box> */}
                         </Stack>
                     </Box>
                 </TableCell>
 
+                {/* ✅ Statut avec couleurs corrigées */}
                 <TableCell>
                     <Label
                         variant="soft"
-                        color={
-                            (row.status === 'terminé' ? 'success' :
-                            row.status === 'en cours' ? 'warning' :
-                            row.status === 'non demarré' ? 'error' :
-                            row.status === 'suspendu' ? 'info' : 'default')
-                        }
+                        color={getStatusColor(row.status)}
                     >
                         {row.status}
                     </Label>
                 </TableCell>
 
+                {/* Actions */}
                 <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <Tooltip title="Voir Détail" placement="top" arrow>
                             <IconButton
-                                color={'inherit'}
-                                // onClick={quickEditForm.onTrue}
-                                href={detailEventHref ? detailEventHref : ''}
+                                color="inherit"
+                                component={RouterLink}
+                                href={detailEventHref || '#'}
                             >
                                 <Iconify icon="solar:eye-bold" />
                             </IconButton>
@@ -193,7 +213,6 @@ export function EventTableRow({ row, selected, editHref, ficheClientHref, detail
                 </TableCell>
             </TableRow>
 
-            {renderQuickEditForm()}
             {renderMenuActions()}
             {renderConfirmDialog()}
         </>

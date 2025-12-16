@@ -1,4 +1,3 @@
-
 import { useBoolean, usePopover } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
@@ -14,9 +13,8 @@ import Checkbox from '@mui/material/Checkbox';
 import TableCell from '@mui/material/TableCell';
 import IconButton from '@mui/material/IconButton';
 
+import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
-
-import { primary } from 'src/theme';
 
 import { Label } from 'src/components/label';
 import { Iconify } from 'src/components/iconify';
@@ -27,8 +25,6 @@ import { IOrganizerItem } from 'src/types/organizer';
 
 import OrganizerQuickEditForm from './organizer-quick-edit-form';
 
-// import { UserQuickEditForm } from './user-quick-edit-form';
-
 // ----------------------------------------------------------------------
 
 type Props = {
@@ -37,32 +33,49 @@ type Props = {
     editHref: string;
     onSelectRow: () => void;
     onDeleteRow: () => void;
+    onToggleStatus?: () => void;
+    onSuccess?: () => void;  // ✅ Callback pour rafraîchir la liste
 };
 
-export function OrganizerTableRow({ row, selected, editHref, onSelectRow, onDeleteRow }: Props) {
+export function OrganizerTableRow({ 
+    row, 
+    selected, 
+    editHref, 
+    onSelectRow, 
+    onDeleteRow,
+    onToggleStatus,
+    onSuccess  // ✅ Nouveau prop
+}: Props) {
     const menuActions = usePopover();
     const confirmDialog = useBoolean();
     const quickEditForm = useBoolean();
-    const isForbidden = useBoolean();
 
-    const avatarColors = [
-        '#1976d2', // blue
-        '#2e7d32', // green
-        '#d32f2f', // red
-        '#ed6c02', // orange
-        '#9c27b0', // purple
-        '#0288d1', // light blue
-    ];
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🔗 LIEN VERS LA PAGE DE DÉTAILS
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    const detailsHref = paths.admin.PLANIFIER_UN_EVENEMENT.detailorganisateur
+        ? paths.admin.PLANIFIER_UN_EVENEMENT.detailorganisateur(row.id)
+        : `/admin/planifier-evenement/organisateur/${row.id}`;
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🎨 RENDU DU FORMULAIRE D'ÉDITION RAPIDE
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     const renderQuickEditForm = () => (
         <OrganizerQuickEditForm
             open={quickEditForm.value}
             onClose={quickEditForm.onFalse}
-            currentOrganizer={row}
+            // ✅ PASSER LES DONNÉES BRUTES (_raw) POUR AVOIR TOUS LES CHAMPS
+            currentOrganizer={row._raw}
+            // ✅ Callback pour rafraîchir la liste après modification
+            onSuccess={onSuccess}
         />
     );
 
-
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🎨 RENDU DU MENU D'ACTIONS
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     const renderMenuActions = () => (
         <CustomPopover
@@ -72,28 +85,43 @@ export function OrganizerTableRow({ row, selected, editHref, onSelectRow, onDele
             slotProps={{ arrow: { placement: 'right-top' } }}
         >
             <MenuList>
-                <li>
-                    <MenuItem
-                        component={RouterLink}
-                        href={editHref}
-                        onClick={() => menuActions.onClose()}
-                        sx={{
-                            color: row.status === 'active' ? 'warning.main' : 'info.main',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1
-                        }}
-                    >
-                        <Iconify
-                            icon={row.status === 'active'
-                                ? "solar:forbidden-circle-bold"
-                                : "solar:check-circle-bold"
-                            }
-                        />
-                        {row.status === 'active' ? 'Suspendre' : 'Activer'}
-                    </MenuItem>
-                </li>
+                {/* ACTION : VOIR DÉTAILS */}
+                <MenuItem
+                    component={RouterLink}
+                    href={detailsHref}
+                    onClick={menuActions.onClose}
+                >
+                    <Iconify icon="solar:eye-bold" />
+                    Voir détails
+                </MenuItem>
 
+                {/* ACTION : SUSPENDRE / ACTIVER (si disponible) */}
+                {onToggleStatus && (
+                    <li>
+                        <MenuItem
+                            onClick={() => {
+                                onToggleStatus();
+                                menuActions.onClose();
+                            }}
+                            sx={{
+                                color: row.status === 'active' ? 'warning.main' : 'success.main',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1
+                            }}
+                        >
+                            <Iconify
+                                icon={row.status === 'active'
+                                    ? "solar:forbidden-circle-bold"
+                                    : "solar:check-circle-bold"
+                                }
+                            />
+                            {row.status === 'active' ? 'Suspendre' : 'Activer'}
+                        </MenuItem>
+                    </li>
+                )}
+
+                {/* ACTION : SUPPRIMER */}
                 <MenuItem
                     onClick={() => {
                         confirmDialog.onTrue();
@@ -108,12 +136,16 @@ export function OrganizerTableRow({ row, selected, editHref, onSelectRow, onDele
         </CustomPopover>
     );
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🎨 RENDU DU DIALOG DE CONFIRMATION
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     const renderConfirmDialog = () => (
         <ConfirmDialog
             open={confirmDialog.value}
             onClose={confirmDialog.onFalse}
             title="Supprimer"
-            content="Êtes vous sûr de vouloir supprimer?"
+            content={`Êtes-vous sûr de vouloir supprimer ${row.name} ?`}
             action={
                 <Button variant="contained" color="error" onClick={onDeleteRow}>
                     Supprimer
@@ -122,9 +154,14 @@ export function OrganizerTableRow({ row, selected, editHref, onSelectRow, onDele
         />
     );
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🎨 RENDU DE LA LIGNE DU TABLEAU
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
     return (
         <>
             <TableRow hover selected={selected} aria-checked={selected} tabIndex={-1}>
+                {/* CHECKBOX */}
                 <TableCell padding="checkbox">
                     <Checkbox
                         checked={selected}
@@ -136,60 +173,59 @@ export function OrganizerTableRow({ row, selected, editHref, onSelectRow, onDele
                     />
                 </TableCell>
 
+                {/* AVATAR */}
                 <TableCell>
                     <Box sx={{ gap: 2, display: 'flex', alignItems: 'center' }}>
-                        <Avatar alt={`${row.name}`}>
+                        <Avatar alt={row.name}>
                             {row.name
-                                .split(' ') // Divise le nom complet en un tableau de mots
-                                .map(word => word.charAt(0)) // Récupère la première lettre de chaque mot
-                                .join('') // Combine les initiales
-                                .toUpperCase()} {/* Met les lettres en majuscules */}
+                                .split(' ')
+                                .map(word => word.charAt(0))
+                                .join('')
+                                .toUpperCase()
+                            }
                         </Avatar>
                     </Box>
                 </TableCell>
 
-                <TableCell >
+                {/* NOM COMPLET - LIEN VERS DÉTAILS */}
+                <TableCell>
                     <Stack sx={{ typography: 'body2', flex: '1 1 auto', alignItems: 'flex-start' }}>
                         <Link
                             component={RouterLink}
-                            href={editHref}
+                            href={detailsHref}
                             color="inherit"
-                            sx={{ cursor: 'pointer' }}
+                            sx={{ 
+                                cursor: 'pointer',
+                                '&:hover': {
+                                    textDecoration: 'underline'
+                                }
+                            }}
                         >
                             {row.name}
                         </Link>
-                    </Stack></TableCell>
+                    </Stack>
+                </TableCell>
 
-                {/* <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.surname}</TableCell> */}
-
+                {/* EMAIL */}
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.email}</TableCell>
 
+                {/* TÉLÉPHONE */}
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.phoneNumber}</TableCell>
-                {/* <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.password}</TableCell> */}
 
+                {/* STATUT */}
                 <TableCell>
                     <Label
                         variant="soft"
-                        color={
-                            (row.status === 'active' && 'info') ||
-                            'error'
-                        }
+                        color={row.status === 'active' ? 'info' : 'error'}
                     >
                         {row.status === 'active' ? 'Actif' : 'Suspendu'}
                     </Label>
                 </TableCell>
 
+                {/* ACTIONS */}
                 <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        {/* <Tooltip title="Interdire" placement="top" arrow>
-                            <IconButton
-                                color={isForbidden.value == true ? 'error' : 'default'}
-                                onClick={isForbidden.onFalse}
-                            >
-                                <Iconify icon="solar:forbidden-circle-line-duotone" />
-                            </IconButton>
-                        </Tooltip> */}
-                        <Tooltip title="Modifier" placement="top" arrow>
+                        <Tooltip title="Modifier rapidement" placement="top" arrow>
                             <IconButton
                                 color={quickEditForm.value ? 'inherit' : 'default'}
                                 onClick={quickEditForm.onTrue}

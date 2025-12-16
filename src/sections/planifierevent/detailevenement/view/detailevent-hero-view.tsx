@@ -1,3 +1,5 @@
+//src/sections/planifierevent/detailevenement/view/detailevent-hero-view.tsx
+
 import React from 'react';
 
 import Box, { BoxProps } from '@mui/material/Box';

@@ -3,7 +3,7 @@
 import type { IEventItem } from 'src/types/event';
 import type { TableHeadCellProps } from 'src/components/table';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useBoolean, useSetState } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
@@ -16,16 +16,23 @@ import Tooltip from '@mui/material/Tooltip';
 import TableBody from '@mui/material/TableBody';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
 
 import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
 
-import {  _roles, _userList } from 'src/_mock';
-import { _eventList } from 'src/_mock/_events';
 import { DashboardContent } from 'src/layouts/admin';
-import { _organizerList } from 'src/_mock/_organizer';
 
-import { Label } from 'src/components/label';
+// ✅ IMPORTS DU SERVICE ET ACTIONS ORGANIZER
+import { organizerService } from 'src/lib/organizers/service';
+import { deleteOrganizer, suspendOrganizer, unsuspendOrganizer } from 'src/lib/organizers/actions';
+import type { Organizer } from 'src/lib/organizers/types';
+
+// ✅ IMPORTS DU SERVICE ET ACTIONS EVENT (sans suspend/unsuspend)
+import { eventService } from 'src/lib/events/service';
+import { deleteEvent } from 'src/lib/events/actions'; // ← Retrait suspend/unsuspend
+import type { Event } from 'src/lib/events/types';
+
 import { toast } from 'src/components/snackbar';
 import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
@@ -34,9 +41,7 @@ import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
 import {
     useTable,
     emptyRows,
-    rowInPage,
     TableNoData,
-    getComparator,
     TableEmptyRows,
     TableHeadCustom,
     TableSelectedAction,
@@ -49,9 +54,9 @@ import { EventTableFiltersResult } from 'src/sections/planifierevent/event/event
 import { OrganizerTableToolbar } from 'src/sections/planifierevent/organisateur/organizer_table-toolbar';
 
 import { IOrganizerItem, IOrganizerTableFilters } from 'src/types/organizer';
+import { IEventTableFilters } from 'src/types/event';
 
 import { EventTableRow } from '../event-table-row';
-
 
 // ----------------------------------------------------------------------
 
@@ -60,7 +65,7 @@ const EVENT_TABLE_HEAD: TableHeadCellProps[] = [
     { id: 'matricule', label: 'Matricule', width: 88 },
     { id: 'name', label: 'Titre', width: 200 },
     { id: 'type', label: 'Type', width: 100 },
-    { id: 'date', label: 'Periode', width: 80 },
+    { id: 'date', label: 'Periode', width: 120 },
     { id: 'nomclient', label: 'Nom Client', width: 200 },
     { id: 'status', label: 'Statut', width: 70 },
     { id: '', label: 'Action', width: 88 },
@@ -76,10 +81,11 @@ const ORGANIZER_TABLE_HEAD: TableHeadCellProps[] = [
 ];
 
 export const EVENT_STATUS_OPTIONS = [
-    { value: 'terminé', label: 'Terminé' },
-    { value: 'en cours', label: 'En Cours' },
-    { value: 'non demarré', label: 'Non Demarré' },
-  ];
+    { value: 'NotStarted', label: 'Non démarré' },
+    { value: 'InProgress', label: 'En Cours' },
+    { value: 'Suspended', label: 'Suspendu' },
+    { value: 'Finished', label: 'Terminé' },
+];
 
 const STATUS_OPTIONS = [{ value: 'all', label: 'Tous' }, ...EVENT_STATUS_OPTIONS];
 
@@ -88,61 +94,215 @@ export const PLAN_EVENT_TABS = [
     { label: 'Gérer organisateur', value: 'organizer' },
 ];
 
-interface FilterData {
-    eventData: IEventItem[];
+// ----------------------------------------------------------------------
+
+/**
+ * Fonction de filtrage LOCAL (pour les organisateurs)
+ */
+function applyOrganizerFilter({
+    organizerData,
+    filters,
+}: {
     organizerData: IOrganizerItem[];
     filters: IOrganizerTableFilters;
-    comparator: (a: any, b: any) => number;
-}
-
-function applyFilter({ eventData, organizerData, filters, comparator, activeTab }: FilterData & { activeTab: string }) {
+}) {
     const { name } = filters;
-    const currentData = activeTab === 'event' ? eventData : organizerData;
 
-    let filteredData = [...currentData];
+    let filteredData = organizerData;
 
-    // Sort data
-    const stabilizedThis = filteredData.map((el, index) => [el, index] as const);
-    stabilizedThis.sort((a, b) => {
-        const order = comparator(a[0], b[0]);
-        if (order !== 0) return order;
-        return a[1] - b[1];
-    });
-    filteredData = stabilizedThis.map((el) => el[0]);
-
-    // Apply filters
     if (name) {
-        filteredData = filteredData.filter(
-            (item) => item.name.toLowerCase().includes(name.toLowerCase())
+        const searchTerm = name.toLowerCase();
+        filteredData = filteredData.filter((item) =>
+            item.name.toLowerCase().includes(searchTerm) ||
+            item.email.toLowerCase().includes(searchTerm) ||
+            item.phoneNumber.toLowerCase().includes(searchTerm)
         );
     }
 
-    // if (status !== 'all') {
-    //     filteredData = filteredData.filter((item) => item.status === status);
-    // }
+    return filteredData.sort((a, b) => a.name.localeCompare(b.name));
+}
 
-    // if (role && role.length) {
-    //     filteredData = filteredData.filter((item) =>
-    //         'role' in item && role.includes(item.role)
-    //     );
-    // }
+/**
+ * Fonction de filtrage LOCAL (pour les événements)
+ */
+function applyEventFilter({
+    eventData,
+    filters,
+}: {
+    eventData: IEventItem[];
+    filters: IEventTableFilters;
+}) {
+    const { name } = filters;
 
-    return filteredData;
+    let filteredData = eventData;
+
+    if (name) {
+        const searchTerm = name.toLowerCase();
+        filteredData = filteredData.filter((item) =>
+            item.name.toLowerCase().includes(searchTerm) ||
+            item.nomclient.toLowerCase().includes(searchTerm) ||
+            item.matricule.toLowerCase().includes(searchTerm)
+        );
+    }
+
+    // Tri par date de début (plus récent en premier)
+    return filteredData.sort((a, b) => {
+        const dateA = new Date(a.startDate || 0);
+        const dateB = new Date(b.startDate || 0);
+        return dateB.getTime() - dateA.getTime();
+    });
 }
 
 // ----------------------------------------------------------------------
 
 export function EventListView() {
-
     const table = useTable();
-    const confirmDialog = useBoolean();
-    const [activeTab, setActiveTab] = useState('event');
-    const [eventData, setEventData] = useState<IEventItem[]>(_eventList);
-    const [organizerData, setOrganizerData] = useState<IOrganizerItem[]>(_organizerList);
+    const confirm = useBoolean();
 
-    const filters = useSetState<IOrganizerTableFilters>({
+    const [activeTab, setActiveTab] = useState('event');
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 📦 ÉTAT POUR LES ÉVÉNEMENTS
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    const [eventData, setEventData] = useState<Event[]>([]);
+    const [eventTotalCount, setEventTotalCount] = useState(0);
+    const [eventLoading, setEventLoading] = useState(false);
+    const [eventError, setEventError] = useState<string | null>(null);
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 📦 ÉTAT POUR LES ORGANISATEURS
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    const [organizerData, setOrganizerData] = useState<Organizer[]>([]);
+    const [organizerTotalCount, setOrganizerTotalCount] = useState(0);
+    const [organizerLoading, setOrganizerLoading] = useState(false);
+    const [organizerError, setOrganizerError] = useState<string | null>(null);
+
+    const filters = useSetState<IEventTableFilters>({
         name: '',
     });
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 📖 CHARGEMENT DES ÉVÉNEMENTS
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    const loadEvents = useCallback(async () => {
+        try {
+            setEventLoading(true);
+            setEventError(null);
+
+            console.log('🔵 Chargement des events...', {
+                page: table.page + 1,
+                pageSize: table.rowsPerPage
+            });
+
+            const response = await eventService.getAll({
+                page: table.page + 1,
+                pageSize: table.rowsPerPage,
+                sortBy: 'startDate',
+                sortOrder: 'Desc',
+            });
+
+            console.log('✅ Events chargés:', {
+                count: response.items.length,
+                total: response.totalItems,
+            });
+
+            setEventData(response.items);
+            setEventTotalCount(response.totalItems);
+
+        } catch (err) {
+            console.error('❌ Erreur chargement events:', err);
+            setEventError('Impossible de charger les événements');
+            toast.error('Erreur lors du chargement des événements');
+        } finally {
+            setEventLoading(false);
+        }
+    }, [table.page, table.rowsPerPage]);
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 📖 CHARGEMENT DES ORGANISATEURS
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    const loadOrganizers = useCallback(async () => {
+        try {
+            setOrganizerLoading(true);
+            setOrganizerError(null);
+
+            console.log('🔵 Chargement des organizers...');
+
+            const response = await organizerService.getAll({
+                page: table.page + 1,
+                pageSize: table.rowsPerPage,
+                sortBy: 'firstName',
+                sortOrder: 'Asc',
+            });
+
+            console.log('✅ Organizers chargés:', response.totalItems);
+
+            setOrganizerData(response.items);
+            setOrganizerTotalCount(response.totalItems);
+
+        } catch (err) {
+            console.error('❌ Erreur chargement organizers:', err);
+            setOrganizerError('Impossible de charger les organisateurs');
+            toast.error('Erreur lors du chargement des organisateurs');
+        } finally {
+            setOrganizerLoading(false);
+        }
+    }, [table.page, table.rowsPerPage]);
+
+    // Chargement selon l'onglet actif
+    useEffect(() => {
+        if (activeTab === 'event') {
+            loadEvents();
+        } else {
+            loadOrganizers();
+        }
+    }, [activeTab, loadEvents, loadOrganizers]);
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🎨 TRANSFORMATION DES DONNÉES
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    const formatOrganizerForTable = useCallback((organizer: Organizer): IOrganizerItem => ({
+        id: organizer.id,
+        name: organizerService.formatDisplayName(organizer),
+        email: organizer.email,
+        phoneNumber: organizer.phoneNumber,
+        status: organizer.status.toLowerCase() as 'active' | 'suspended',
+        _raw: organizer,
+        surname: '',
+        password: '',
+        address: '',
+        avatarUrl: '',
+        isVerified: false
+    }), []);
+
+    /**
+     * ✅ CORRIGÉ : Utiliser event.eventType (le label) au lieu de event.eventTypeId
+     */
+    const formatEventForTable = useCallback((event: Event): IEventItem => ({
+        id: event.id,
+        name: event.name,
+        matricule: event.registrationNumber,
+        type: event.eventType, // ✅ CORRIGÉ : eventType contient le label (ex: "Salon", "Gala")
+        date: eventService.formatEventPeriod(event),
+        startDate: event.startDate,
+        endDate: event.endDate,
+        location: event.location,
+        status: eventService.getStatusLabel(event),
+        nomclient: event.customerName,
+        logoClient: '',
+        logo: event.image || '',
+        _raw: event,
+    }), []);
+
+    // Suite dans le prochain fichier...
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🔄 CHANGEMENT D'ONGLET
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     const handleTabChange = (event: React.SyntheticEvent, newValue: string) => {
         setActiveTab(newValue);
@@ -150,109 +310,230 @@ export function EventListView() {
         filters.setState({ name: '' });
     };
 
-    const dataFiltered = applyFilter({
-        eventData,
-        organizerData,
-        filters: filters.state,
-        comparator: getComparator(table.order, table.orderBy),
-        activeTab
-    });
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🔍 FILTRAGE
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-    const paginatedData = dataFiltered.slice(
-        table.page * table.rowsPerPage,
-        table.page * table.rowsPerPage + table.rowsPerPage
-    );
+    const dataFiltered = activeTab === 'event'
+        ? applyEventFilter({
+            eventData: eventData.map(formatEventForTable),
+            filters: filters.state,
+        })
+        : applyOrganizerFilter({
+            organizerData: organizerData.map(formatOrganizerForTable),
+            filters: filters.state,
+        });
+
+    const paginatedData = dataFiltered;
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🗑️ SUPPRESSION
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     const handleDeleteRow = useCallback(
-        (id: string) => {
-
+        async (id: string) => {
             if (activeTab === 'event') {
-                setEventData(prev => prev.filter(row => row.id !== id));
-            } else {
-                setOrganizerData(prev => prev.filter(row => row.id !== id));
-            }
-            toast.success('Suppression réussie!');
+                // ✅ Vérifier si l'événement peut être supprimé (pas InProgress)
+                const event = eventData.find(e => e.id === id);
+                if (event && event.status === 'InProgress') {
+                    toast.error('Impossible de supprimer un événement en cours');
+                    return;
+                }
 
-            table.onUpdatePageDeleteRow(paginatedData.length);
+                console.log('🗑️ Suppression event:', id);
+
+                const result = await deleteEvent(id);
+
+                if (result && 'error' in result) {
+                    toast.error(result.error || 'Erreur lors de la suppression');
+                    return;
+                }
+
+                toast.success('Événement supprimé');
+                loadEvents();
+            } else {
+                console.log('🗑️ Suppression organizer:', id);
+
+                const result = await deleteOrganizer(id);
+
+                if (result && 'error' in result) {
+                    toast.error(result.error || 'Erreur lors de la suppression');
+                    return;
+                }
+
+                toast.success('Organisateur supprimé');
+                loadOrganizers();
+            }
         },
-        [activeTab, table, dataFiltered.length, paginatedData, setEventData, setOrganizerData]
+        [activeTab, eventData, loadEvents, loadOrganizers]
     );
 
-    const handleDeleteRows = useCallback(() => {
-        const totalRowsFiltered = dataFiltered.length;
-        const currentPageRows = paginatedData.length;
+    const handleDeleteRows = useCallback(
+        async () => {
+            if (activeTab === 'event') {
+                // ✅ Vérifier que tous les événements peuvent être supprimés
+                const eventsToDelete = eventData.filter(e => table.selected.includes(e.id));
+                const cannotDelete = eventsToDelete.filter(e => e.status === 'InProgress');
 
-        if (activeTab === 'event') {
-            setEventData(prev => prev.filter(row => !table.selected.includes(row.id)));
-        } else {
-            setOrganizerData(prev => prev.filter(row => !table.selected.includes(row.id)));
-        }
-        toast.success('Suppression réussie!');
+                if (cannotDelete.length > 0) {
+                    toast.error('Certains événements en cours ne peuvent pas être supprimés');
+                    return;
+                }
 
-        table.onUpdatePageDeleteRows(currentPageRows, totalRowsFiltered);
-    }, [activeTab, table, dataFiltered.length, paginatedData, setEventData, setOrganizerData]);
+                for (const id of table.selected) {
+                    await deleteEvent(id);
+                }
 
-    const canReset = !!(filters.state.name );
+                toast.success('Événements supprimés');
+                table.onUpdatePageDeleteRows({
+                    totalRowsInPage: paginatedData.length,
+                    totalRowsFiltered: dataFiltered.length,
+                });
+                loadEvents();
+            } else {
+                for (const id of table.selected) {
+                    await deleteOrganizer(id);
+                }
+
+                toast.success('Organisateurs supprimés');
+                table.onUpdatePageDeleteRows({
+                    totalRowsInPage: paginatedData.length,
+                    totalRowsFiltered: dataFiltered.length,
+                });
+                loadOrganizers();
+            }
+        },
+        [activeTab, table, paginatedData.length, dataFiltered.length, eventData, loadEvents, loadOrganizers]
+    );
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🔄 CHANGEMENT DE STATUT (ORGANISATEURS UNIQUEMENT)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ⚠️ IMPORTANT : Le changement de statut des événements se fait ailleurs
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    const handleToggleOrganizerStatus = useCallback(
+        async (id: string, currentStatus: string) => {
+            console.log('🔄 Changement de statut organizer:', id, currentStatus);
+
+            const result = currentStatus === 'active'
+                ? await suspendOrganizer(id)
+                : await unsuspendOrganizer(id);
+
+            if (result && 'error' in result) {
+                toast.error(result.error || 'Erreur lors du changement de statut');
+                return;
+            }
+
+            toast.success(
+                currentStatus === 'active'
+                    ? 'Organisateur suspendu'
+                    : 'Organisateur réactivé'
+            );
+
+            loadOrganizers();
+        },
+        [loadOrganizers]
+    );
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 📊 CALCULS POUR L'AFFICHAGE
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    const canReset = !!filters.state.name;
     const notFound = (!dataFiltered.length && canReset) || !dataFiltered.length;
+    const denseHeight = table.dense ? 56 : 76;
 
-    const currentTableHead = activeTab === 'event' ? EVENT_TABLE_HEAD : ORGANIZER_TABLE_HEAD;
+    const totalCount = activeTab === 'event' 
+        ? eventTotalCount 
+        : organizerTotalCount;
 
-    const getAddButtonLabel = () => activeTab === 'event' ? 'Nouvel événement' : 'Nouvel organisateur';
-    const getTableTitle = () => activeTab === 'event' ? 'Liste des événements' : 'Liste des organisateurs';
+    const pageTitle = activeTab === 'event'
+        ? 'Liste des événements'
+        : 'Liste des organisateurs';
+
+    const isLoading = activeTab === 'event' ? eventLoading : organizerLoading;
+    const hasError = activeTab === 'event' ? eventError : organizerError;
+
+    // Suite dans la partie 3 (rendu)...
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🎨 RENDU
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     return (
         <>
-            <DashboardContent maxWidth="xl">
+            <DashboardContent>
                 <CustomBreadcrumbs
-                    heading='Planifier un évènement'
+                    heading={pageTitle}
+                    links={[
+                        { name: 'Planifier évènement' },
+                    ]}
                     action={
                         <Button
                             component={RouterLink}
-                            href={(activeTab === 'event') ? paths.admin.PLANIFIER_UN_EVENEMENT.newevent : paths.admin.PLANIFIER_UN_EVENEMENT.neworganisateur}
+                            href={
+                                activeTab === 'event'
+                                    ? paths.admin.PLANIFIER_UN_EVENEMENT.newevent
+                                    : paths.admin.PLANIFIER_UN_EVENEMENT.neworganisateur
+                            }
                             variant="contained"
                             startIcon={<Iconify icon="mingcute:add-line" />}
                         >
-                            {getAddButtonLabel()}
+                            {activeTab === 'event' ? 'Nouvel évènement' : 'Nouvel organisateur'}
                         </Button>
                     }
                     sx={{ mb: { xs: 3, md: 5 } }}
                 />
 
                 <Card>
+                    {/* ONGLETS */}
                     <Tabs
                         value={activeTab}
                         onChange={handleTabChange}
-                        sx={{ px: 2.5, mb: 3 }}
+                        sx={{
+                            px: 2.5,
+                            boxShadow: (theme) => `inset 0 -2px 0 0 ${theme.palette.divider}`,
+                        }}
                     >
                         {PLAN_EVENT_TABS.map((tab) => (
-                            <Tab
-                                key={tab.value}
-                                value={tab.value}
-                                label={tab.label}
-                            />
+                            <Tab key={tab.value} value={tab.value} label={tab.label} />
                         ))}
                     </Tabs>
 
-                    <Typography variant='h4' sx={{ mt: 3, mb: 2, pl: 5, fontSize: 20 }}>
-                        {getTableTitle()}
-                        <span className=' pl-1'>({dataFiltered.length})</span>
-                    </Typography>
-
-                    {activeTab === 'organizer' ?
-                        (
-                            <OrganizerTableToolbar
-                                filters={filters}
-                                onResetPage={table.onResetPage}
-                            // options={{ roles: _roles }}
-                            />
-                        ) : (
+                    {/* TOOLBAR AVEC COMPTEUR */}
+                    {activeTab === 'event' ? (
+                        <>
                             <EventTableToolbar
                                 filters={filters}
+                                options={{ statuses: STATUS_OPTIONS }}
                                 onResetPage={table.onResetPage}
-                            // options={{ roles: _roles }}
                             />
-                        )}
+                            {!isLoading && !hasError && (
+                                <Box sx={{ px: 2.5, pb: 1 }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        {eventTotalCount} événement{eventTotalCount > 1 ? 's' : ''} au total
+                                        {filters.state.name && ` (${dataFiltered.length} résultat${dataFiltered.length > 1 ? 's' : ''})`}
+                                    </Typography>
+                                </Box>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <OrganizerTableToolbar
+                                filters={filters}
+                            />
+                            {!isLoading && !hasError && (
+                                <Box sx={{ px: 2.5, pb: 1 }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        {organizerTotalCount} organisateur{organizerTotalCount > 1 ? 's' : ''} au total
+                                        {filters.state.name && ` (${dataFiltered.length} résultat${dataFiltered.length > 1 ? 's' : ''})`}
+                                    </Typography>
+                                </Box>
+                            )}
+                        </>
+                    )}
 
+                    {/* RÉSULTATS DE FILTRES */}
                     {canReset && (
                         <EventTableFiltersResult
                             filters={filters}
@@ -262,98 +543,137 @@ export function EventListView() {
                         />
                     )}
 
-                    <Box sx={{ position: 'relative' }}>
-                        <TableSelectedAction
-                            dense={table.dense}
-                            numSelected={table.selected.length}
-                            rowCount={dataFiltered.length}
-                            onSelectAllRows={(checked) =>
-                                table.onSelectAllRows(
-                                    checked,
-                                    dataFiltered.map((row) => row.id)
-                                )
-                            }
-                            action={
-                                <Tooltip title="Supprimer">
-                                    <IconButton color="primary" onClick={confirmDialog.onTrue}>
-                                        <Iconify icon="solar:trash-bin-trash-bold" />
-                                    </IconButton>
-                                </Tooltip>
-                            }
-                        />
+                    {/* LOADING STATE */}
+                    {isLoading && (
+                        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+                            <CircularProgress />
+                            <Typography sx={{ ml: 2 }}>
+                                Chargement des {activeTab === 'event' ? 'événements' : 'organisateurs'}...
+                            </Typography>
+                        </Box>
+                    )}
 
-                        <Scrollbar>
-                            <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 960 }}>
-                                <TableHeadCustom
-                                    order={table.order}
-                                    orderBy={table.orderBy}
-                                    headCells={currentTableHead}
-                                    rowCount={dataFiltered.length}
+                    {/* ERROR STATE */}
+                    {hasError && (
+                        <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="400px" gap={2}>
+                            <Iconify icon="solar:danger-circle-bold" width={64} color="error.main" />
+                            <Typography variant="h6" color="error">{hasError}</Typography>
+                            <Button 
+                                variant="contained" 
+                                onClick={activeTab === 'event' ? loadEvents : loadOrganizers}
+                            >
+                                Réessayer
+                            </Button>
+                        </Box>
+                    )}
+
+                    {/* TABLEAU */}
+                    {!isLoading && !hasError && (
+                        <>
+                            <Box sx={{ position: 'relative' }}>
+                                <TableSelectedAction
+                                    dense={table.dense}
                                     numSelected={table.selected.length}
-                                    onSort={table.onSort}
+                                    rowCount={dataFiltered.length}
                                     onSelectAllRows={(checked) =>
                                         table.onSelectAllRows(
                                             checked,
-                                            dataFiltered.map((row) => row.id)
+                                            paginatedData.map((row) => row.id)
                                         )
+                                    }
+                                    action={
+                                        <Tooltip title="Supprimer">
+                                            <IconButton color="primary" onClick={confirm.onTrue}>
+                                                <Iconify icon="solar:trash-bin-trash-bold" />
+                                            </IconButton>
+                                        </Tooltip>
                                     }
                                 />
 
-                                <TableBody>
-                                    {paginatedData.map((row) => (
-                                        activeTab === 'organizer' ? (
-                                            <OrganizerTableRow
-                                                key={row.id}
-                                                row={row as IOrganizerItem}
-                                                selected={table.selected.includes(row.id)}
-                                                onSelectRow={() => table.onSelectRow(row.id)}
-                                                onDeleteRow={() => handleDeleteRow(row.id)}
-                                                editHref={paths.dashboard.user.edit(row.id)}
+                                <Scrollbar sx={{ minHeight: 444 }}>
+                                    <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 960 }}>
+                                        <TableHeadCustom
+                                            order={table.order}
+                                            orderBy={table.orderBy}
+                                            headCells={activeTab === 'event' ? EVENT_TABLE_HEAD : ORGANIZER_TABLE_HEAD}
+                                            rowCount={dataFiltered.length}
+                                            numSelected={table.selected.length}
+                                            onSort={table.onSort}
+                                            onSelectAllRows={(checked) =>
+                                                table.onSelectAllRows(
+                                                    checked,
+                                                    paginatedData.map((row) => row.id)
+                                                )
+                                            }
+                                        />
+
+                                        <TableBody>
+                                            {paginatedData.map((row) =>
+                                                activeTab === 'event' ? (
+                                                    <EventTableRow
+                                                        key={row.id}
+                                                        row={row as IEventItem}
+                                                        selected={table.selected.includes(row.id)}
+                                                        onSelectRow={() => table.onSelectRow(row.id)}
+                                                        onDeleteRow={() => handleDeleteRow(row.id)}
+                                                        // ❌ RETIRÉ : onToggleStatus (se fait ailleurs)
+                                                        editHref={paths.admin.PLANIFIER_UN_EVENEMENT.edit(row.id)}
+                                                        detailEventHref={`/admin/planifierevent/detailevenement/${row.id}`}
+                                                        ficheClientHref="#"
+                                                    />
+                                                ) : (
+                                                    <OrganizerTableRow
+                                                        key={row.id}
+                                                        row={row as IOrganizerItem}
+                                                        selected={table.selected.includes(row.id)}
+                                                        onSelectRow={() => table.onSelectRow(row.id)}
+                                                        onDeleteRow={() => handleDeleteRow(row.id)}
+                                                        onToggleStatus={() => handleToggleOrganizerStatus(row.id, (row as IOrganizerItem).status)}
+                                                        onSuccess={loadOrganizers}
+                                                        editHref={paths.admin.PLANIFIER_UN_EVENEMENT.editorganisateur?.(row.id) || '#'}
+                                                    />
+                                                )
+                                            )}
+
+                                            <TableEmptyRows
+                                                height={denseHeight}
+                                                emptyRows={emptyRows(table.page, table.rowsPerPage, totalCount)}
                                             />
-                                        ) : (
-                                            <EventTableRow
-                                                key={row.id}
-                                                row={row as IEventItem}
-                                                selected={table.selected.includes(row.id)}
-                                                onSelectRow={() => table.onSelectRow(row.id)}
-                                                onDeleteRow={() => handleDeleteRow(row.id)}
-                                                editHref={paths.admin.PLANIFIER_UN_EVENEMENT.edit(row.id)}
-                                                ficheClientHref={paths.admin.GESTION_CLIENT.ficheclient(row.id)}
-                                                detailEventHref={paths.admin.PLANIFIER_UN_EVENEMENT.detailevenement(row.id)}
-                                            />
-                                        )
-                                    ))}
 
-                                    <TableEmptyRows
-                                        height={table.dense ? 56 : 76}
-                                        emptyRows={emptyRows(table.page, table.rowsPerPage, dataFiltered.length)}
-                                    />
+                                            <TableNoData notFound={notFound} />
+                                        </TableBody>
+                                    </Table>
+                                </Scrollbar>
+                            </Box>
 
-                                    <TableNoData notFound={notFound} />
-                                </TableBody>
-                            </Table>
-                        </Scrollbar>
-                    </Box>
-
-                    <TablePaginationCustom
-                        page={table.page}
-                        dense={table.dense}
-                        count={dataFiltered.length}
-                        rowsPerPage={table.rowsPerPage}
-                        onPageChange={table.onChangePage}
-                        onChangeDense={table.onChangeDense}
-                        onRowsPerPageChange={table.onChangeRowsPerPage}
-                    />
+                            {/* PAGINATION */}
+                            <TablePaginationCustom
+                                page={table.page}
+                                dense={table.dense}
+                                count={totalCount}
+                                rowsPerPage={table.rowsPerPage}
+                                onPageChange={table.onChangePage}
+                                onChangeDense={table.onChangeDense}
+                                onRowsPerPageChange={table.onChangeRowsPerPage}
+                            />
+                        </>
+                    )}
                 </Card>
             </DashboardContent>
 
+            {/* CONFIRMATION DE SUPPRESSION */}
             <ConfirmDialog
-                open={confirmDialog.value}
-                onClose={confirmDialog.onFalse}
+                open={confirm.value}
+                onClose={confirm.onFalse}
                 title="Supprimer"
                 content={
                     <>
-                        Êtes-vous sûr de vouloir supprimer <strong> {table.selected.length} </strong> éléments?
+                        Êtes-vous sûr de vouloir supprimer <strong>{table.selected.length}</strong> élément(s) ?
+                        {activeTab === 'event' && (
+                            <Typography variant="caption" display="block" sx={{ mt: 1, color: 'error.main' }}>
+                                Note: Les événements en cours ne peuvent pas être supprimés.
+                            </Typography>
+                        )}
                     </>
                 }
                 action={
@@ -362,7 +682,7 @@ export function EventListView() {
                         color="error"
                         onClick={() => {
                             handleDeleteRows();
-                            confirmDialog.onFalse();
+                            confirm.onFalse();
                         }}
                     >
                         Supprimer
@@ -372,39 +692,3 @@ export function EventListView() {
         </>
     );
 }
-
-// ----------------------------------------------------------------------
-
-// type ApplyFilterProps = {
-//     inputData: IUserItem[];
-//     filters: IUserTableFilters;
-//     comparator: (a: any, b: any) => number;
-// };
-
-// function applyFilter({ inputData, comparator, filters }: ApplyFilterProps) {
-//     const { name, status, role } = filters;
-
-//     const stabilizedThis = inputData.map((el, index) => [el, index] as const);
-
-//     stabilizedThis.sort((a, b) => {
-//         const order = comparator(a[0], b[0]);
-//         if (order !== 0) return order;
-//         return a[1] - b[1];
-//     });
-
-//     inputData = stabilizedThis.map((el) => el[0]);
-
-//     if (name) {
-//         inputData = inputData.filter((user) => user.name.toLowerCase().includes(name.toLowerCase()));
-//     }
-
-//     if (status !== 'all') {
-//         inputData = inputData.filter((user) => user.status === status);
-//     }
-
-//     if (role.length) {
-//         inputData = inputData.filter((user) => role.includes(user.role));
-//     }
-
-//     return inputData;
-// }

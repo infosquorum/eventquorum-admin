@@ -1,3 +1,4 @@
+//src/sections/planifierevent/type/type-table-toolbar.tsx
 import type { SelectChangeEvent } from '@mui/material/Select';
 import type { UseSetStateReturn } from 'minimal-shared/hooks';
 
@@ -27,18 +28,24 @@ import { TypeNewDialog } from './type-new-dialog';
 
 // ----------------------------------------------------------------------
 
+// type Props = {
+//     onResetPage: () => void;
+//     filters: UseSetStateReturn<IOrganizerTableFilters>;
+//     options?: {
+//         roles: string[];
+//     };
+// };
+
 type Props = {
     onResetPage: () => void;
+    onRefresh: () => Promise<void>;
     filters: UseSetStateReturn<IOrganizerTableFilters>;
-    options?: {
-        roles: string[];
-    };
 };
 
-export function TypeTableToolbar({ filters, options, onResetPage }: Props) {
-    const menuActions = usePopover();
+export function TypeTableToolbar({ filters, onResetPage, onRefresh }: Props) {
+    // const menuActions = usePopover();
     const typeNewDialog = useBoolean();
-    
+
     const { state: currentFilters, setState: updateFilters } = filters;
 
     const handleFilterName = useCallback(
@@ -49,41 +56,40 @@ export function TypeTableToolbar({ filters, options, onResetPage }: Props) {
         [onResetPage, updateFilters]
     );
 
-    const handleFilterRole = useCallback(
-        (event: SelectChangeEvent<string[]>) => {
-            const newValue =
-                typeof event.target.value === 'string' ? event.target.value.split(',') : event.target.value;
+    // const handleFilterRole = useCallback(
+    //     (event: SelectChangeEvent<string[]>) => {
+    //         const newValue =
+    //             typeof event.target.value === 'string' ? event.target.value.split(',') : event.target.value;
 
-            onResetPage();
-            // updateFilters({ role: newValue });
-        },
-        [onResetPage, updateFilters]
-    );
+    //         onResetPage();
+    //         // updateFilters({ role: newValue });
+    //     },
+    //     [onResetPage, updateFilters]
+    // );
 
-    const renderMenuActions = () => (
-        <CustomPopover
-            open={menuActions.open}
-            anchorEl={menuActions.anchorEl}
-            onClose={menuActions.onClose}
-            slotProps={{ arrow: { placement: 'right-top' } }}
-        >
-            <MenuList>
-                <MenuItem onClick={() => menuActions.onClose()}>
-                    <Iconify icon="solar:export-bold" />
-                    Exporter (EXCEL)
-                </MenuItem>
-            </MenuList>
-        </CustomPopover>
-    );
+    // const renderMenuActions = () => (
+    //     <CustomPopover
+    //         open={menuActions.open}
+    //         anchorEl={menuActions.anchorEl}
+    //         onClose={menuActions.onClose}
+    //         slotProps={{ arrow: { placement: 'right-top' } }}
+    //     >
+    //         <MenuList>
+    //             <MenuItem onClick={() => menuActions.onClose()}>
+    //                 <Iconify icon="solar:export-bold" />
+    //                 Exporter (EXCEL)
+    //             </MenuItem>
+    //         </MenuList>
+    //     </CustomPopover>
+    // );
 
     const renderTypeNewDialog = () => (
         <TypeNewDialog
-          open={typeNewDialog.value}
-          onClose={() => {
-            typeNewDialog.onFalse();
-          }}
+            open={typeNewDialog.value}
+            onClose={typeNewDialog.onFalse}
+            onRefresh={onRefresh}
         />
-      );
+    );
 
     return (
         <>
@@ -97,8 +103,8 @@ export function TypeTableToolbar({ filters, options, onResetPage }: Props) {
                     alignItems: { xs: 'flex-end', md: 'center' },
                 }}
             >
-                {options && <FormControl sx={{ flexShrink: 0, width: { xs: 1, md: 200 } }}>
-                    {/* <InputLabel htmlFor="filter-role-select">Role</InputLabel>
+                {/* {options && <FormControl sx={{ flexShrink: 0, width: { xs: 1, md: 200 } }}> */}
+                {/* <InputLabel htmlFor="filter-role-select">Role</InputLabel>
                     <Select
                         multiple
                         value={currentFilters.role}
@@ -119,7 +125,7 @@ export function TypeTableToolbar({ filters, options, onResetPage }: Props) {
                             </MenuItem>
                         ))}
                     </Select> */}
-                </FormControl>}
+                {/* </FormControl>} */}
 
                 <Box
                     sx={{
@@ -150,22 +156,22 @@ export function TypeTableToolbar({ filters, options, onResetPage }: Props) {
                         variant="contained"
                         startIcon={<Iconify icon="mingcute:add-line" />}
                         sx={{
-                            minWidth: { xs: 80, sm: 150, md: 150 }, 
+                            minWidth: { xs: 80, sm: 150, md: 150 },
                             minHeight: 50,
-                            fontSize: { xs: '0.6rem', sm: '1rem' }, 
-                            px: { xs: 1, sm: 3 }, 
+                            fontSize: { xs: '0.6rem', sm: '1rem' },
+                            px: { xs: 1, sm: 3 },
                         }}
                     >
-                        Ajouter 
+                        Ajouter
                     </Button>
                     <Button
                         variant="outlined"
                         startIcon={<Iconify icon="solar:export-bold" />}
                         sx={{
-                            minWidth: { xs: 85, sm: 200, md: 220 }, 
+                            minWidth: { xs: 85, sm: 200, md: 220 },
                             minHeight: 50,
-                            fontSize: { xs: '0.6rem', sm: '1rem' }, 
-                            px: { xs: 1, sm: 2 }, 
+                            fontSize: { xs: '0.6rem', sm: '1rem' },
+                            px: { xs: 1, sm: 2 },
                         }}
                     >
                         Exporter (EXCEL)
@@ -177,7 +183,7 @@ export function TypeTableToolbar({ filters, options, onResetPage }: Props) {
                 </Box>
             </Box>
 
-            {renderMenuActions()}
+            {/* {renderMenuActions()} */}
             {renderTypeNewDialog()}
         </>
     );

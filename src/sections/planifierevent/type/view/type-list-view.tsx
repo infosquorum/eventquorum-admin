@@ -1,9 +1,10 @@
-'use client';
+//src/sections/planifierevent/type/view/type-list-view.tsx
+
 'use client';
 
 import type { TableHeadCellProps } from 'src/components/table';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useBoolean, useSetState } from 'minimal-shared/hooks';
 
 import Box from '@mui/material/Box';
@@ -28,6 +29,13 @@ import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
 import { ConfirmDialog } from 'src/components/custom-dialog';
 import { CustomBreadcrumbs } from 'src/components/custom-breadcrumbs';
+
+import CircularProgress from '@mui/material/CircularProgress';
+import Loading from 'src/app/loading';
+// ✅ Import API
+import { eventTypesService} from 'src/lib/eventTypes/service';
+import type { EventType } from 'src/lib/eventTypes/types';
+
 import {
     useTable,
     emptyRows,
@@ -52,10 +60,13 @@ const TABLE_HEAD: TableHeadCellProps[] = [
     { id: '', width: 88 },
 ];
 
-export type IEventType = {
-    id: string;
-    name: string,
-}
+// export type IEventType = {
+//     id: string;
+//     name: string,
+// }
+
+export type IEventType = EventType;
+
 export type IEventTableFilters = {
     name: string,
 }
@@ -66,10 +77,33 @@ export function TypeListView() {
 
     const confirmDialog = useBoolean();
 
-    const [tableData, setTableData] = useState<IEventType[]>(_eventTypesList);
+    // const [tableData, setTableData] = useState<IEventType[]>(_eventTypesList);
+    const [tableData, setTableData] = useState<IEventType[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     const filters = useSetState<IEventTableFilters>({ name: '' });
     const { state: currentFilters, setState: updateFilters } = filters;
+
+    // Fetch data
+    // ✅ Charger les données au montage
+    useEffect(() => {
+        async function loadEventTypes() {
+            try {
+                setIsLoading(true);
+                setError(null);
+                const types = await eventTypesService.getAll();
+                setTableData(types);
+            } catch (err) {
+                console.error('Erreur chargement event types:', err);
+                setError('Erreur lors du chargement des types');
+                toast.error('Erreur lors du chargement des types');
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        loadEventTypes();
+    }, []);
 
     const dataFiltered = applyFilter({
         inputData: tableData,
@@ -83,29 +117,29 @@ export function TypeListView() {
 
     const notFound = (!dataFiltered.length && canReset) || !dataFiltered.length;
 
-    const handleDeleteRow = useCallback(
-        (id: string) => {
-            const deleteRow = tableData.filter((row) => row.id !== id);
+    // const handleDeleteRow = useCallback(
+    //     (id: string) => {
+    //         const deleteRow = tableData.filter((row) => row.id !== id);
 
-            toast.success('Suppression réussie!');
+    //         toast.success('Suppression réussie!');
 
-            setTableData(deleteRow);
+    //         setTableData(deleteRow);
 
-            table.onUpdatePageDeleteRow(dataInPage.length);
-        },
-        [dataInPage.length, table, tableData]
-    );
+    //         table.onUpdatePageDeleteRow(dataInPage.length);
+    //     },
+    //     [dataInPage.length, table, tableData]
+    // );
 
 
-    const handleDeleteRows = useCallback(() => {
-        const deleteRows = tableData.filter((row) => !table.selected.includes(row.id));
+    // const handleDeleteRows = useCallback(() => {
+    //     const deleteRows = tableData.filter((row) => !table.selected.includes(row.id));
 
-        toast.success('Suppression réussie!');
+    //     toast.success('Suppression réussie!');
 
-        setTableData(deleteRows);
+    //     setTableData(deleteRows);
 
-        table.onUpdatePageDeleteRows(dataInPage.length, dataFiltered.length);
-    }, [dataFiltered.length, dataInPage.length, table, tableData]);
+    //     table.onUpdatePageDeleteRows(dataInPage.length, dataFiltered.length);
+    // }, [dataFiltered.length, dataInPage.length, table, tableData]);
 
     const renderConfirmDialog = () => (
         <ConfirmDialog
@@ -122,7 +156,7 @@ export function TypeListView() {
                     variant="contained"
                     color="error"
                     onClick={() => {
-                        handleDeleteRows();
+                        toast.warning('Suppression non disponible');
                         confirmDialog.onFalse();
                     }}
                 >
@@ -132,24 +166,49 @@ export function TypeListView() {
         />
     );
 
+    // ✅ État de chargement
+    if (isLoading) {
+        return (
+            <DashboardContent maxWidth="xl">
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+                    <Loading />
+                </Box>
+            </DashboardContent>
+        );
+    }
+
+    // ✅ État d'erreur
+    if (error) {
+        return (
+            <DashboardContent maxWidth="xl">
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                    <Typography color="error">{error}</Typography>
+                    <Button variant="outlined" onClick={() => window.location.reload()} sx={{ mt: 2 }}>
+                        Réessayer
+                    </Button>
+                </Box>
+            </DashboardContent>
+        );
+    }
+
 
     return (
         <>
             <DashboardContent maxWidth="xl">
                 <CustomBreadcrumbs
-                heading="Liste des types"
-                action={
-                    <Button
-                        component={RouterLink}
-                        href={paths.admin.PLANIFIER_UN_EVENEMENT.root}
-                        variant="contained"
-                        startIcon={<Iconify icon="mingcute:left-fill" />}
-                    >
-                        Retour
-                    </Button>
-                }
-                sx={{ mb: { xs: 3, md: 5 } }}
-            />
+                    heading="Liste des types"
+                    action={
+                        <Button
+                            component={RouterLink}
+                            href={paths.admin.PLANIFIER_UN_EVENEMENT.root}
+                            variant="contained"
+                            startIcon={<Iconify icon="mingcute:left-fill" />}
+                        >
+                            Retour
+                        </Button>
+                    }
+                    sx={{ mb: { xs: 3, md: 5 } }}
+                />
                 <Card>
                     <Typography variant='subtitle2' sx={{ mt: 3, mb: 2, pl: 5, fontSize: 20 }}>
                         ({dataFiltered.length}) Types enregistrés
@@ -158,7 +217,11 @@ export function TypeListView() {
                     <TypeTableToolbar
                         filters={filters}
                         onResetPage={table.onResetPage}
-                    // options={{ roles: _roles }}
+                        onRefresh={async () => {
+                            const types = await eventTypesService.getAll();
+                            setTableData(types);
+                            toast.success('Liste actualisée');
+                        }}
                     />
 
                     {canReset && (
@@ -171,7 +234,7 @@ export function TypeListView() {
                     )}
 
                     <Box sx={{ position: 'relative' }}>
-                        <TableSelectedAction
+                        {/* <TableSelectedAction
                             dense={table.dense}
                             numSelected={table.selected.length}
                             rowCount={dataFiltered.length}
@@ -188,11 +251,11 @@ export function TypeListView() {
                                     </IconButton>
                                 </Tooltip>
                             }
-                        />
+                        /> */}
 
                         <Scrollbar>
                             <Table size={table.dense ? 'small' : 'medium'} sx={{ minWidth: 960 }}>
-                                <TableHeadCustom
+                                {/* <TableHeadCustom
                                     order={table.order}
                                     orderBy={table.orderBy}
                                     headCells={TABLE_HEAD}
@@ -205,6 +268,15 @@ export function TypeListView() {
                                             dataFiltered.map((row) => row.id)
                                         )
                                     }
+                                /> */}
+                                <TableHeadCustom
+                                    order={table.order}
+                                    orderBy={table.orderBy}
+                                    headCells={TABLE_HEAD}
+                                    rowCount={dataFiltered.length}
+                                    numSelected={0}
+                                    onSort={table.onSort}
+                                    onSelectAllRows={() => { }}
                                 />
 
                                 <TableBody>
@@ -217,10 +289,6 @@ export function TypeListView() {
                                             <TypeTableRow
                                                 key={row.id}
                                                 row={row}
-                                                selected={table.selected.includes(row.id)}
-                                                onSelectRow={() => table.onSelectRow(row.id)}
-                                                onDeleteRow={() => handleDeleteRow(row.id)}
-                                                editHref={paths.admin.GESTION_CLIENT.edit(row.id)}
                                             />
                                         ))}
 
@@ -261,7 +329,7 @@ function applyFilter({ inputData, filters }: ApplyFilterProps) {
 
 
     if (name) {
-        inputData = inputData.filter((user) => user.name.toLowerCase().includes(name.toLowerCase()));
+        inputData = inputData.filter((type) => type.label.toLowerCase().includes(name.toLowerCase()));
     }
 
     return inputData;

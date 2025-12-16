@@ -76,7 +76,7 @@ export const organizerService = {
     /**
      * Business Logic : Vérifier si un organizer peut être réactivé
      */
-    canUnsuspend(organizer: Organizer): boolean {
-        return organizer.status === 'Suspended';
-    },
+    // canUnsuspend(organizer: Organizer): boolean {
+    //     return organizer.status === 'Suspended';
+    // },
 };

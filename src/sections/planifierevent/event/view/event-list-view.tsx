@@ -235,8 +235,8 @@ export function EventListView() {
             const response = await organizerService.getAll({
                 page: table.page + 1,
                 pageSize: table.rowsPerPage,
-                sortBy: 'firstName',
-                sortOrder: 'Asc',
+                // sortBy: 'firstName',
+                // sortOrder: 'Asc',
             });
 
             console.log('✅ Organizers chargés:', response.totalItems);
@@ -296,7 +296,8 @@ export function EventListView() {
         nomclient: event.customerName,
         logoClient: '',
         logo: event.image || '',
-        _raw: event,
+        coverUrl: event.image || '',
+        description: event.description || '',
     }), []);
 
     // Suite dans le prochain fichier...
@@ -385,10 +386,10 @@ export function EventListView() {
                 }
 
                 toast.success('Événements supprimés');
-                table.onUpdatePageDeleteRows({
-                    totalRowsInPage: paginatedData.length,
-                    totalRowsFiltered: dataFiltered.length,
-                });
+                table.onUpdatePageDeleteRows(
+                    paginatedData.length,
+                    dataFiltered.length
+                );
                 loadEvents();
             } else {
                 for (const id of table.selected) {
@@ -396,10 +397,10 @@ export function EventListView() {
                 }
 
                 toast.success('Organisateurs supprimés');
-                table.onUpdatePageDeleteRows({
-                    totalRowsInPage: paginatedData.length,
-                    totalRowsFiltered: dataFiltered.length,
-                });
+                table.onUpdatePageDeleteRows(
+                    paginatedData.length,
+                    dataFiltered.length
+                );
                 loadOrganizers();
             }
         },
@@ -505,7 +506,7 @@ export function EventListView() {
                         <>
                             <EventTableToolbar
                                 filters={filters}
-                                options={{ statuses: STATUS_OPTIONS }}
+                                options={{ roles: [] }}
                                 onResetPage={table.onResetPage}
                             />
                             {!isLoading && !hasError && (
@@ -630,7 +631,6 @@ export function EventListView() {
                                                         onDeleteRow={() => handleDeleteRow(row.id)}
                                                         onToggleStatus={() => handleToggleOrganizerStatus(row.id, (row as IOrganizerItem).status)}
                                                         onSuccess={loadOrganizers}
-                                                        editHref={paths.admin.PLANIFIER_UN_EVENEMENT.editorganisateur?.(row.id) || '#'}
                                                     />
                                                 )
                                             )}

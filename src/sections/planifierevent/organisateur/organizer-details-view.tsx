@@ -109,10 +109,14 @@ export function OrganizerDetailsView({ id }: Props) {
             }
 
             // Mise à jour locale
-            setOrganizer(prev => prev ? {
-                ...prev,
-                status: prev.status === 'Active' ? 'Suspended' : 'Active'
-            } : null);
+            setOrganizer(prev => {
+                if (!prev) return null;
+                const newStatus = prev.status === 'Active' ? 'Suspended' : 'Active';
+                return {
+                    ...prev,
+                    status: newStatus as typeof prev.status
+                };
+            });
 
             toast.success(
                 organizer.status === 'Active'

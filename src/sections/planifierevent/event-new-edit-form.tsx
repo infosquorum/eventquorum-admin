@@ -35,7 +35,8 @@ import { customerService } from 'src/lib/customers/service';
 import { eventTypesService } from 'src/lib/eventTypes/service';
 import { organizerService } from 'src/lib/organizers/service';
 import type { CreateEventDto, UpdateEventDto } from 'src/lib/events/types';
-
+import { FacebookIcon, InstagramIcon, LinkedinIcon, TwitterIcon } from 'src/assets/icons/social-icons';
+import { MenuItem, SvgIcon, SvgIconProps } from '@mui/material';
 import { toast } from 'src/components/snackbar';
 import { Form, Field, schemaHelper } from 'src/components/hook-form';
 
@@ -128,6 +129,49 @@ export const NewEventSchema = zod
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // 📦 TYPES
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+// type des items de réseaux sociaux
+export type SocialMediaItem = {
+  id: string
+  name: string
+  logo: SvgIconProps
+  link: string
+}
+
+export const defaultSocialMediaItem: SocialMediaItem = {
+  id: '',
+  name: '',
+  link: '',
+  logo: {} as SvgIconProps,
+};
+
+export const socialMedia: SocialMediaItem[] = [
+  {
+    id: 'facebook',
+    name: 'Facebook',
+    logo: <FacebookIcon />,
+    link: ''
+  },
+  {
+    id: 'instagram',
+    name: 'Instagram',
+    logo: <InstagramIcon />,
+    link: ''
+  },
+  {
+    id: 'linkedin',
+    name: 'LinkedIn',
+    logo: <LinkedinIcon />,
+    link: ''
+  },
+  {
+    id: 'twitter',
+    name: 'Twitter',
+    logo: <TwitterIcon />,
+    link: ''
+  }
+]
 
 /**
  * Type inféré depuis le schéma Zod

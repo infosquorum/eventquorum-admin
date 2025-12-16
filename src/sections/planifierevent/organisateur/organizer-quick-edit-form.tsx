@@ -198,7 +198,7 @@ export function OrganizerQuickEditForm({
 
             const phoneInformation = {
                 number: parsedPhone.nationalNumber,  // Ex: "0749668962"
-                region: parsedPhone.country,          // Ex: "CI"
+                region: parsedPhone.country ?? 'CI',          // Ex: "CI"
             };
 
             console.log('📞 Téléphone extrait:', {

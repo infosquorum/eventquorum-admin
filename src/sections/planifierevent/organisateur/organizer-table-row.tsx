@@ -30,7 +30,6 @@ import OrganizerQuickEditForm from './organizer-quick-edit-form';
 type Props = {
     row: IOrganizerItem;
     selected: boolean;
-    editHref: string;
     onSelectRow: () => void;
     onDeleteRow: () => void;
     onToggleStatus?: () => void;
@@ -40,7 +39,6 @@ type Props = {
 export function OrganizerTableRow({ 
     row, 
     selected, 
-    editHref, 
     onSelectRow, 
     onDeleteRow,
     onToggleStatus,

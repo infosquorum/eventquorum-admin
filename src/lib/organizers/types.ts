@@ -25,6 +25,7 @@ export interface Organizer {
   lastName: string;
   email: string;
   phoneNumber: string;
+  address : string;
   status: OrganizerStatus;
 }
 

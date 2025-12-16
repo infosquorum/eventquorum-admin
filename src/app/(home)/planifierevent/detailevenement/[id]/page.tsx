@@ -120,7 +120,8 @@ function mapEventToView(
     participants: 0,
     likes: 0,
     revenue: 0,
-    photos: []
+    photos: [],
+    avis: 0,
   };
   
   console.log('✅ Événement mappé:', mapped);

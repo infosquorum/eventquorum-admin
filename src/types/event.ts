@@ -27,10 +27,10 @@ export type IEventItem = {
   location: string;
   status: string;
   description: string;
-  createdAt?: Date;
-  participants?: number;
-  likes?: number;
-  avis?: number;
+  createdAt: Date;
+  participants: number;
+  likes: number;
+  avis: number;
   revenue: number;
   photos: IEventPhoto[];
 

@@ -320,7 +320,10 @@ export function EventListView() {
             // ✅ VALEURS PAR DÉFAUT OBLIGATOIRES
             revenue: 0,
             photos: [],
-
+            likes: 0,
+            avis: 0,
+            participants: 0,
+            createdAt: new Date(),
             // Optionnel mais utile
             _raw: event,
         }),

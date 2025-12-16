@@ -31,8 +31,8 @@ export type IEventItem = {
   participants?: number;
   likes?: number;
   avis?: number;
-  revenue?: number;
-  photos?: IEventPhoto[];
+  revenue: number;
+  photos: IEventPhoto[];
 
   _raw?: any; // ✅ AJOUT
 };

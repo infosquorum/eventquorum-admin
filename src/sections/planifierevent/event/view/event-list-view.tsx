@@ -283,22 +283,50 @@ export function EventListView() {
     /**
      * ✅ CORRIGÉ : Utiliser event.eventType (le label) au lieu de event.eventTypeId
      */
-    const formatEventForTable = useCallback((event: Event): IEventItem => ({
-        id: event.id,
-        name: event.name,
-        matricule: event.registrationNumber,
-        type: event.eventType, // ✅ CORRIGÉ : eventType contient le label (ex: "Salon", "Gala")
-        date: eventService.formatEventPeriod(event),
-        startDate: event.startDate,
-        endDate: event.endDate,
-        location: event.location,
-        status: eventService.getStatusLabel(event),
-        nomclient: event.customerName,
-        logoClient: '',
-        logo: event.image || '',
-        coverUrl: event.image || '',
-        description: event.description || '',
-    }), []);
+    // const formatEventForTable = useCallback((event: Event): IEventItem => ({
+    //     id: event.id,
+    //     name: event.name,
+    //     matricule: event.registrationNumber,
+    //     type: event.eventType, // ✅ CORRIGÉ : eventType contient le label (ex: "Salon", "Gala")
+    //     date: eventService.formatEventPeriod(event),
+    //     startDate: event.startDate,
+    //     endDate: event.endDate,
+    //     location: event.location,
+    //     status: eventService.getStatusLabel(event),
+    //     nomclient: event.customerName,
+    //     logoClient: '',
+    //     logo: event.image || '',
+    //     coverUrl: event.image || '',
+    //     description: event.description || '',
+    // }), []);
+
+    const formatEventForTable = useCallback(
+        (event: Event): IEventItem => ({
+            id: event.id,
+            name: event.name,
+            matricule: event.registrationNumber,
+            type: event.eventType,
+            date: eventService.formatEventPeriod(event),
+            startDate: event.startDate,
+            endDate: event.endDate,
+            location: event.location,
+            status: eventService.getStatusLabel(event),
+            nomclient: event.customerName,
+            logoClient: '',
+            logo: event.image || '',
+            coverUrl: event.image || '',
+            description: event.description || '',
+
+            // ✅ VALEURS PAR DÉFAUT OBLIGATOIRES
+            revenue: 0,
+            photos: [],
+
+            // Optionnel mais utile
+            _raw: event,
+        }),
+        []
+    );
+
 
     // Suite dans le prochain fichier...
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -445,8 +473,8 @@ export function EventListView() {
     const notFound = (!dataFiltered.length && canReset) || !dataFiltered.length;
     const denseHeight = table.dense ? 56 : 76;
 
-    const totalCount = activeTab === 'event' 
-        ? eventTotalCount 
+    const totalCount = activeTab === 'event'
+        ? eventTotalCount
         : organizerTotalCount;
 
     const pageTitle = activeTab === 'event'
@@ -559,8 +587,8 @@ export function EventListView() {
                         <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="400px" gap={2}>
                             <Iconify icon="solar:danger-circle-bold" width={64} color="error.main" />
                             <Typography variant="h6" color="error">{hasError}</Typography>
-                            <Button 
-                                variant="contained" 
+                            <Button
+                                variant="contained"
                                 onClick={activeTab === 'event' ? loadEvents : loadOrganizers}
                             >
                                 Réessayer

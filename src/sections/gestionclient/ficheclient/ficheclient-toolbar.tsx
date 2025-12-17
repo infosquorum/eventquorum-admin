@@ -42,7 +42,7 @@ export function FicheClientToolbar({
         <Box sx={{ flexGrow: 1 }} />
 
         <Tooltip title="Partager la fiche client">
-            <IconButton component={RouterLink} href={editHref}>
+            <IconButton component={RouterLink} href="#">
               <Iconify icon="solar:multiple-forward-right-bold" />
             </IconButton>
           </Tooltip>
